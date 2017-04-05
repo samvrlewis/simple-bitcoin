@@ -5,7 +5,7 @@ import hashlib
 import requests
 
 # 58 character alphabet used
-alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
 def base58_encode(version, payload):
     """
@@ -22,20 +22,15 @@ def base58_encode(version, payload):
 
     while result != 0:
         result, remainder = divmod(result, 58)
-        encoded.append(alphabet[remainder])
+        encoded.append(BASE58_ALPHABET[remainder])
 
     return padding*"1" + "".join(encoded)[::-1]
 
+def get_private_address(hex_string):
+    return bytes.fromhex(hex_string.zfill(64))
+
 def get_public_address(private_address):
-    # https://en.bitcoin.it/wiki/Protocol_documentation
-    key_int = int(private_address, 16) 
-
-    key = struct.pack(">Q", (key_int >> 192) & 0xFFFFFFFFFFFFFFFF)
-    key += struct.pack(">Q", (key_int >> 128) & 0xFFFFFFFFFFFFFFFF)
-    key += struct.pack(">Q", (key_int >> 64) & 0xFFFFFFFFFFFFFFFF)
-    key += struct.pack(">Q", key_int & 0xFFFFFFFFFFFFFFFF)
-
-    public_key = SigningKey.from_string(key, curve=SECP256k1).verifying_key.to_string()
+    public_key = SigningKey.from_string(private_address, curve=SECP256k1).verifying_key.to_string()
     public_key = b"\04" + public_key
     
     hashed = hashlib.sha256(public_key).digest()
@@ -46,4 +41,8 @@ def get_public_address(private_address):
 
     return ripehashed
 
-print(base58_encode("00", get_public_address("0000123")))
+private_address = get_private_address("1234")
+public_address = get_public_address(private_address)
+bitcoin_address = base58_encode("00", public_address)
+
+print(bitcoin_address)
