@@ -1,23 +1,28 @@
-from ecdsa import SigningKey, SECP256k1
+import hashlib
 import random
 import struct
-import hashlib
+
 import requests
+from ecdsa import SECP256k1, SigningKey
 
 # 58 character alphabet used
 BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
-def base58_encode(version, payload):
+def base58_encode(version, public_address):
     """
     Gets a Base58Check string
     See https://en.bitcoin.it/wiki/Base58Check_encoding
     """
     version = bytes.fromhex(version)
-    payload_enc = version + payload + hashlib.sha256(hashlib.sha256(version + payload).digest()).digest()[:4]
-    result = int.from_bytes(payload_enc, byteorder="big")
+    checksum = hashlib.sha256(hashlib.sha256(version + public_address).digest()).digest()[:4]
+    payload = version + public_address + checksum
+    
+    result = int.from_bytes(payload, byteorder="big")
+
+    print(result)
 
     # count the leading 0s
-    padding = len(payload_enc) - len(payload_enc.lstrip(b'\0'))
+    padding = len(payload) - len(payload.lstrip(b'\0'))
     encoded = []
 
     while result != 0:
@@ -26,23 +31,25 @@ def base58_encode(version, payload):
 
     return padding*"1" + "".join(encoded)[::-1]
 
-def get_private_address(hex_string):
+def get_private_key(hex_string):
     return bytes.fromhex(hex_string.zfill(64))
 
-def get_public_address(private_address):
-    public_key = SigningKey.from_string(private_address, curve=SECP256k1).verifying_key.to_string()
-    public_key = b"\04" + public_key
-    
-    hashed = hashlib.sha256(public_key).digest()
+def get_public_key(private_address):
+    # gets the x and y params on the curve
+    return SigningKey.from_string(private_address, curve=SECP256k1).verifying_key.to_string()
 
-    h = hashlib.new('ripemd160') #uses openssl implementation
-    h.update(hashed)
-    ripehashed = h.digest()
+def get_public_address(public_key):
+    address = hashlib.sha256(b"\04" + public_key).digest()
 
-    return ripehashed
+    h = hashlib.new('ripemd160')
+    h.update(address)
+    address = h.digest()
 
-private_address = get_private_address("1234")
-public_address = get_public_address(private_address)
+    return address
+
+private_key = get_private_key("1234")
+public_key = get_public_key(private_key)
+public_address = get_public_address(public_key)
 bitcoin_address = base58_encode("00", public_address)
 
 print(bitcoin_address)
