@@ -1,8 +1,4 @@
 import hashlib
-import random
-import struct
-
-import requests
 from ecdsa import SECP256k1, SigningKey
 
 # 58 character alphabet used
@@ -18,9 +14,7 @@ def base58_encode(version, public_address):
     payload = version + public_address + checksum
     
     result = int.from_bytes(payload, byteorder="big")
-
-    print(result)
-
+    
     # count the leading 0s
     padding = len(payload) - len(payload.lstrip(b'\0'))
     encoded = []
@@ -34,9 +28,9 @@ def base58_encode(version, public_address):
 def get_private_key(hex_string):
     return bytes.fromhex(hex_string.zfill(64))
 
-def get_public_key(private_address):
+def get_public_key(private_key):
     # gets the x and y params on the curve
-    return SigningKey.from_string(private_address, curve=SECP256k1).verifying_key.to_string()
+    return SigningKey.from_string(private_key, curve=SECP256k1).verifying_key.to_string()
 
 def get_public_address(public_key):
     address = hashlib.sha256(b"\04" + public_key).digest()
@@ -47,9 +41,9 @@ def get_public_address(public_key):
 
     return address
 
-private_key = get_private_key("1234")
-public_key = get_public_key(private_key)
-public_address = get_public_address(public_key)
-bitcoin_address = base58_encode("00", public_address)
-
-print(bitcoin_address)
+if __name__ == "__main__":
+    private_key = get_private_key("1234") # 
+    public_key = get_public_key(private_key)
+    public_address = get_public_address(public_key)
+    bitcoin_address = base58_encode("00", public_address)
+    print(bitcoin_address)

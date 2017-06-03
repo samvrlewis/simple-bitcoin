@@ -1,106 +1,126 @@
-"""
-useful resources:
-    - https://en.bitcoin.it/wiki/Transaction
-    - https://en.bitcoin.it/wiki/Raw_Transactions
-    - http://bitcoin.stackexchange.com/questions/32628/redeeming-a-raw-transaction-step-by-step-example-required
-    - https://bitcoin.stackexchange.com/questions/3374/how-to-redeem-a-basic-tx
-    - https://coinb.in/#verify
-    - https://blockchain.info/address/1KAWPAD8KovUo53pqHUY2bLNMTYa1obFX9
-    - https://bitcoin.org/en/developer-reference#raw-transaction-format
-    
-- each transaction has at least one input and output
-- output is an unspent transaction output until later spend
-- output is number of satoshis
-    - pays to conditional pubkey script
-    - anyone who can satisfy the pubkey script can spend the satoshis
-- input uses txid and output index num to specify an output to be spent
-    - also has signature script which allows to satisfy pubkey script
-- pay to public key has (p2pkh) is most common transaction type
-- btc not redemeed in an output is considered to be tx fee
-    - so need to be careful you spend all inputs!!!
-- script:
-    - input scriptsig (transmited by sender to prove it can spend outputs)
-    evaluated first, then output scriptPubKey (sets conditions for output spending)
-    - scriptPubKey uses value left on stack
-    - if input authorized, scriptPubKey returns true
-
-- signature script:
-    - secp256k1 signature using private key + transaction data
-
-
-"""
 import struct
+import hashlib
+from ecdsa import SigningKey, SECP256k1, util
 
-def publickey_to_pubscript(pub_key):
+import address_utils
+
+def get_packed_transaction(transaction_dict):
     """
-    This is the standard 'pay to pubkey hash' script
-
-    pub_key: Hex string of the public key
+    Packs a dictionary with transaction data in accordance with Bitcoin's 
+    transaction format:
+    https://bitcoin.org/en/developer-reference#raw-transaction-format
     """
-    # OP_DUP then OP_HASH160 then 20 bytes
-    script = bytes.fromhex("76a9")
-
-    # The address to pay to
-    script += bytes.fromhex(pub_key)
-
-    # OP_EQUALVERIFY then OP_CHECKSIG
-    script += bytes.fromhex("88ac")
-    print(script.hex())
-
-    return script
-
-def make_raw_transaction(from_addr, to_addr, transaction_hash, output_index, satoshis_spend):
-    #https://bitcoin.org/en/developer-reference#raw-transaction-format
-    raw_transaction  = struct.pack("<L", 1) # version (always = 1)
-    raw_transaction += struct.pack("<B", 1) # number of inputs
-
-    # 'tx_in' structure
-    #unknown why reversed: 
-    ## https://bitcoin.org/en/developer-reference#hash-byte-order
-    tx_in  = struct.pack("32s", bytes.fromhex(transaction_hash[::-1])) # txid in internal byte order
-    tx_in += struct.pack("<L", output_index) # output to spend
-    tx_in += struct.pack("<B", 25) # length of signature script
-    tx_in += struct.pack("25s", publickey_to_pubscript(from_addr))
-    tx_in += struct.pack("<L", 0xffffffff)
+    raw_transaction  = struct.pack("<L", transaction_dict["version"])
+    raw_transaction += struct.pack("<B", transaction_dict["num_inputs"])
+    tx_in  = struct.pack("32s", transaction_dict["transaction_hash"])
+    tx_in += struct.pack("<L", transaction_dict["output_index"]) 
+    tx_in += struct.pack("<B", transaction_dict["sig_script_length"])
+    tx_in += struct.pack(str(transaction_dict["sig_script_length"]) + "s", transaction_dict["sig_script"])
+    tx_in += struct.pack("<L", transaction_dict["sequence"])
+    
     raw_transaction += tx_in
 
-    raw_transaction += struct.pack("<B", 1) # number of output
+    raw_transaction += struct.pack("<B", transaction_dict["num_outputs"]) 
+    tx_out  = struct.pack("<q", transaction_dict["satoshis"])
+    tx_out += struct.pack("<B", transaction_dict["pubkey_length"])
+    tx_out += struct.pack("25s", transaction_dict["pubkey_script"]) 
 
-    # 'tx_out' struct
-    tx_out  = struct.pack("<q", satoshis_spend) # number of satoshis to spend
-    tx_out += struct.pack("<B", 25) # num bytes in script
-    tx_out += struct.pack("25s", publickey_to_pubscript(to_addr)) 
     raw_transaction += tx_out
+    raw_transaction += struct.pack("<L", transaction_dict["lock_time"])
 
-    raw_transaction += struct.pack("<L", 0) # transaction locktime
-    raw_transaction += struct.pack("<L", 1) # hash code type
+    if "hash_code_type" in transaction_dict:
+        raw_transaction += struct.pack("<L", transaction_dict["hash_code_type"])
 
     return raw_transaction
 
-import hashlib
+def get_p2pkh_script(pub_key):
+    """
+    This is the standard 'pay to pubkey hash' script
+    """
+    # OP_DUP then OP_HASH160 then 20 bytes (pub address length)
+    script = bytes.fromhex("76a914")
 
-trans_id = "eccf7e3034189b851985d871f91384b8ee357cd47c3024736e5676eb2debb3f2"[::-1]
-from_addr = "14010966776006953d5567439e5e39f86a0d273bee"
-to_addr = "14097072524438d003d23a2f23edb65aae1bb3e469"
-satoshis = 99900000
+    # The address to pay to
+    script += pub_key
 
-raw = make_raw_transaction(from_addr, to_addr, trans_id, 1, satoshis)
+    # OP_EQUALVERIFY then OP_CHECKSIG
+    script += bytes.fromhex("88ac")
 
-print(raw)
-print(hashlib.sha256(hashlib.sha256(raw).digest()).digest().hex())
+    return script
 
-"""
-01000000
-01
-eccf7e3034189b851985d871f91384b8ee357cd47c3024736e5676eb2debb3f2
-01000000
-19
-76a914010966776006953d5567439e5e39f86a0d273bee88ac
-ffffffff
-01
-605af40500000000
-19
-76a914097072524438d003d23a2f23edb65aae1bb3e46988ac
-00000000
-01000000
-"""
+def get_raw_transaction(from_addr, to_addr, transaction_hash, output_index, satoshis_spend):
+    transaction = {}
+    transaction["version"] = 1
+    transaction["num_inputs"] = 1
+
+    # transaction byte order should be reversed:
+    # https://bitcoin.org/en/developer-reference#hash-byte-order
+    transaction["transaction_hash"] = bytes.fromhex(transaction_hash)[::-1]
+    transaction["output_index"] = output_index
+
+    # temporarily make the signature script the old pubkey script
+    # this will later be replaced. I'm assuming here that the previous
+    # pubkey script was a p2pkh script here
+    transaction["sig_script_length"] = 25
+    transaction["sig_script"] = get_p2pkh_script(from_addr)
+
+    transaction["sequence"] = 0xffffffff
+    transaction["num_outputs"] = 1
+    transaction["satoshis"] = satoshis_spend
+    transaction["pubkey_length"] = 25
+    transaction["pubkey_script"] = get_p2pkh_script(to_addr)
+    transaction["lock_time"] = 0
+    transaction["hash_code_type"] = 1
+
+    return transaction
+
+def get_transaction_signature(transaction, private_key):
+    """
+    Gets the sigscript of a raw transaction
+    private_key should be in bytes form
+    """
+    packed_raw_transaction = get_packed_transaction(transaction)
+    hash = hashlib.sha256(hashlib.sha256(packed_raw_transaction).digest()).digest()
+    public_key = address_utils.get_public_key(private_key)
+    key = SigningKey.from_string(private_key, curve=SECP256k1)
+    signature = key.sign_digest(hash, sigencode=util.sigencode_der)
+    signature += b'01' #hash code type
+
+    sigscript = struct.pack("<B", len(signature))
+    sigscript += signature
+    sigscript += struct.pack("<B", len(public_key))
+    sigscript += public_key
+
+    return sigscript
+
+def get_signed_transaction(from_addr, from_private_key, to_addr, transaction_hash, output_index, satoshis):
+    """
+    Returns a packed signed transaction, ready for transmission to the network
+    """
+    raw = get_raw_transaction(from_addr, to_addr, transaction_hash, output_index, satoshis)
+    signature = get_transaction_signature(raw, from_private_key)
+    
+    raw["sig_script_length"] = len(signature)
+    raw["sig_script"] = signature
+    del raw["hash_code_type"]
+
+    return get_packed_transaction(raw)
+
+if __name__ == "__main__":
+    private_key = address_utils.get_private_key("1234")
+    public_key = address_utils.get_public_key(private_key)
+    public_address = address_utils.get_public_address(public_key)
+    to_address = address_utils.get_public_address(address_utils.get_public_key(address_utils.get_private_key("BADCAFEFABC0FFEE")))
+    transaction_id = "95855ba9f46c6936d7b5ee6733c81e715ac92199938ce30ac3e1214b8c2cd8d7"
+    satoshis = 400000
+    output_index = 1
+
+    transaction = get_signed_transaction(
+        public_address, 
+        private_key, 
+        to_address, 
+        transaction_id, 
+        output_index, 
+        satoshis)
+
+    print(transaction.hex())
