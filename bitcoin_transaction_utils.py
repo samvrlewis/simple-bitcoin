@@ -3,8 +3,8 @@ import hashlib
 import socket
 from ecdsa import SigningKey, SECP256k1, util
 
-import address_utils
-from peer_messaging import get_bitcoin_message, get_version_payload, get_bitcoin_peer
+import bitcoin_address_utils
+from bitcoin_p2p_message_utils import get_bitcoin_message, get_version_payload, get_bitcoin_peer
 
 def get_packed_transaction(transaction_dict):
     """
