@@ -1,8 +1,10 @@
 import struct
 import hashlib
+import socket
 from ecdsa import SigningKey, SECP256k1, util
 
 import address_utils
+from peer_messaging import get_bitcoin_message, get_version_payload, get_bitcoin_peer
 
 def get_packed_transaction(transaction_dict):
     """
@@ -116,7 +118,7 @@ if __name__ == "__main__":
     public_address = address_utils.get_public_address(public_key)
     to_address = address_utils.get_public_address(address_utils.get_public_key(address_utils.get_private_key("BADCAFEFABC0FFEE")))
     transaction_id = "95855ba9f46c6936d7b5ee6733c81e715ac92199938ce30ac3e1214b8c2cd8d7"
-    satoshis = 400000
+    satoshis = 380000
     output_index = 1
 
     transaction = get_signed_transaction(
@@ -127,4 +129,6 @@ if __name__ == "__main__":
         output_index, 
         satoshis)
 
-    print(transaction.hex())
+    send_message(get_bitcoin_peer(), 
+                 get_bitcoin_message("version", get_version_payload() + 
+                 get_bitcoin_message("tx", transaction))

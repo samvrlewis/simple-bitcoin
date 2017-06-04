@@ -20,12 +20,12 @@ def get_bitcoin_message(message_type, payload):
 
 def get_version_payload():
     version = 70014
-    services = 0 # not a full node, cant provide any data
+    services = 1 # not a full node, cant provide any data
     timestamp = int(time.time())
-    addr_recvservices = 0
+    addr_recvservices = 1
     addr_recvipaddress = socket.inet_pton(socket.AF_INET6, "::ffff:127.0.0.1") #ip address of receiving node in big endian
     addr_recvport = 8333
-    addr_transservices = 0
+    addr_transservices = 1
     addr_transipaddress = socket.inet_pton(socket.AF_INET6, "::ffff:127.0.0.1")
     addr_transport = 8333
     nonce = 0
@@ -48,8 +48,13 @@ def get_version_payload():
 
     return payload
 
-if __name__ == "__main__":
+def send_message(peer, message):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((get_bitcoin_peer(), 8333))
-    s.send(get_bitcoin_message("version", get_version_payload()))
-    print(s.recv(1024))
+    s.connect((peer, 8333))
+    s.send(message)
+    
+    return s
+
+if __name__ == "__main__":
+    s = send_message(get_bitcoin_peer(), get_bitcoin_message("version", get_version_payload()))
+    print(s.recv(3000))
