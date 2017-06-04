@@ -29,11 +29,12 @@ def get_private_key(hex_string):
     return bytes.fromhex(hex_string.zfill(64))
 
 def get_public_key(private_key):
-    # gets the x and y params on the curve
-    return SigningKey.from_string(private_key, curve=SECP256k1).verifying_key.to_string()
+    # this returns the concatenated x and y coordinates for the supplied private address
+    # the prepended 04 is used to signify that it's uncompressed
+    return (bytes.fromhex("04") + SigningKey.from_string(private_key, curve=SECP256k1).verifying_key.to_string())
 
 def get_public_address(public_key):
-    address = hashlib.sha256(b"\04" + public_key).digest()
+    address = hashlib.sha256(public_key).digest()
 
     h = hashlib.new('ripemd160')
     h.update(address)
@@ -42,7 +43,7 @@ def get_public_address(public_key):
     return address
 
 if __name__ == "__main__":
-    private_key = get_private_key("1234") # 
+    private_key = get_private_key("1234") 
     public_key = get_public_key(private_key)
     public_address = get_public_address(public_key)
     bitcoin_address = base58_encode("00", public_address)
