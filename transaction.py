@@ -87,7 +87,7 @@ def get_transaction_signature(transaction, private_key):
     hash = hashlib.sha256(hashlib.sha256(packed_raw_transaction).digest()).digest()
     public_key = address_utils.get_public_key(private_key)
     key = SigningKey.from_string(private_key, curve=SECP256k1)
-    signature = key.sign_digest(hash, sigencode=util.sigencode_der)
+    signature = key.sign_digest(hash, sigencode=util.sigencode_der_canonize)
     signature += bytes.fromhex("01") #hash code type
 
     sigscript = struct.pack("<B", len(signature))
