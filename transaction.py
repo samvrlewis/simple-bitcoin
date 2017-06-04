@@ -29,6 +29,7 @@ def get_packed_transaction(transaction_dict):
     raw_transaction += struct.pack("<L", transaction_dict["lock_time"])
 
     if "hash_code_type" in transaction_dict:
+        # a hash code type is only needed prior to signing
         raw_transaction += struct.pack("<L", transaction_dict["hash_code_type"])
 
     return raw_transaction
@@ -49,6 +50,9 @@ def get_p2pkh_script(pub_key):
     return script
 
 def get_raw_transaction(from_addr, to_addr, transaction_hash, output_index, satoshis_spend):
+    """
+    Gets a raw transaction for a one input to one output transaction
+    """
     transaction = {}
     transaction["version"] = 1
     transaction["num_inputs"] = 1
@@ -84,7 +88,7 @@ def get_transaction_signature(transaction, private_key):
     public_key = address_utils.get_public_key(private_key)
     key = SigningKey.from_string(private_key, curve=SECP256k1)
     signature = key.sign_digest(hash, sigencode=util.sigencode_der)
-    signature += b'01' #hash code type
+    signature += bytes.fromhex("01") #hash code type
 
     sigscript = struct.pack("<B", len(signature))
     sigscript += signature
