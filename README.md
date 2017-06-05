@@ -1,10 +1,8 @@
 # Simple Bitcoin
-Understanding the mechanics of Bitcoin using Python3.
+Understanding the mechanics of Bitcoin using Python3, the accompanying source files to [my blog post](http://www.samlewis.me/2017/06/a-peek-under-bitcoins-hood/).
 
-These are accompanying files to my blog post which is a technical post of how Bitcoin works. The files in this repo do just enough to allow you to generate an address, make a transaction and then submit that transaction to the Bitcoin blockchain.
+The files in this repo do just enough to allow you to generate an address, make a transaction and then submit that transaction to the Bitcoin blockchain.
 
 * `bitcoin_address_utils.py` contains code to generate a Bitcoin address
 * `bitcoin_transaction_utils.py` contains code to generate a signed Bitcoin transaction
 * `bitcoin_p2p_message_utils.py` contains code to submit a signed transaction to the Bitcoin blockchain, via the peer to peer network
-
-For more information, please read the accompanying blog post. 
