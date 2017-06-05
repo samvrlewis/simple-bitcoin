@@ -113,7 +113,7 @@ def get_signed_transaction(from_addr, from_private_key, to_addr, transaction_has
     return get_packed_transaction(raw)
 
 if __name__ == "__main__":
-    private_key = address_utils.get_private_key("1234")
+    private_key = address_utils.get_private_key("FEEDB0BDEADBEEF")
     public_key = address_utils.get_public_key(private_key)
     public_address = address_utils.get_public_address(public_key)
     to_address = address_utils.get_public_address(address_utils.get_public_key(address_utils.get_private_key("BADCAFEFABC0FFEE")))

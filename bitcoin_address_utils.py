@@ -43,7 +43,7 @@ def get_public_address(public_key):
     return address
 
 if __name__ == "__main__":
-    private_key = get_private_key("1234") 
+    private_key = get_private_key("FEEDB0BDEADBEEF") 
     public_key = get_public_key(private_key)
     public_address = get_public_address(public_key)
     bitcoin_address = base58_encode("00", public_address)
