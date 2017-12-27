@@ -87,7 +87,7 @@ def get_transaction_signature(transaction, private_key):
     """
     packed_raw_transaction = get_packed_transaction(transaction)
     hash = hashlib.sha256(hashlib.sha256(packed_raw_transaction).digest()).digest()
-    public_key = address_utils.get_public_key(private_key)
+    public_key = bitcoin_address_utils.get_public_key(private_key)
     key = SigningKey.from_string(private_key, curve=SECP256k1)
     signature = key.sign_digest(hash, sigencode=util.sigencode_der_canonize)
     signature += bytes.fromhex("01") #hash code type
@@ -113,10 +113,10 @@ def get_signed_transaction(from_addr, from_private_key, to_addr, transaction_has
     return get_packed_transaction(raw)
 
 if __name__ == "__main__":
-    private_key = address_utils.get_private_key("FEEDB0BDEADBEEF")
-    public_key = address_utils.get_public_key(private_key)
-    public_address = address_utils.get_public_address(public_key)
-    to_address = address_utils.get_public_address(address_utils.get_public_key(address_utils.get_private_key("BADCAFEFABC0FFEE")))
+    private_key = bitcoin_address_utils.get_private_key("FEEDB0BDEADBEEF")
+    public_key = bitcoin_address_utils.get_public_key(private_key)
+    public_address = bitcoin_address_utils.get_public_address(public_key)
+    to_address = bitcoin_address_utils.get_public_address(bitcoin_address_utils.get_public_key(bitcoin_address_utils.get_private_key("BADCAFEFABC0FFEE")))
     transaction_id = "95855ba9f46c6936d7b5ee6733c81e715ac92199938ce30ac3e1214b8c2cd8d7"
     satoshis = 380000
     output_index = 1
